@@ -1,0 +1,29 @@
+name: Mouse report
+description: A button on your mouse doesn't show up, or your mouse needs its own drawing
+labels: [mouse support]
+body:
+  - type: input
+    id: mouse
+    attributes:
+      label: Mouse model and connection
+      placeholder: Razer Naga V2 Pro, USB receiver
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system and version
+    validations:
+      required: true
+  - type: textarea
+    id: buttons
+    attributes:
+      label: Buttons
+      description: Which buttons show up in the Activity tab (and as which number), and which don't show up at all.
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: A photo or link showing where the buttons are helps us draw the mouse.

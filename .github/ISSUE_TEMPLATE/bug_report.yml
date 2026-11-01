@@ -1,0 +1,45 @@
+name: Bug report
+description: Something doesn't work the way it should
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system and version
+      placeholder: macOS 15.1, Windows 11 24H2, Ubuntu 24.04 (Wayland)…
+    validations:
+      required: true
+  - type: input
+    id: mouse
+    attributes:
+      label: Mouse model
+      placeholder: Logitech MX Master 3S over Bluetooth
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: unimouse version
+      description: From the release you downloaded, or the commit you built.
+  - type: textarea
+    id: activity
+    attributes:
+      label: What the Activity tab shows
+      description: In the settings app, open Activity, press the button, and copy what appears.
+  - type: textarea
+    id: config
+    attributes:
+      label: Relevant part of config.toml
+      render: toml
+  - type: input
+    id: others
+    attributes:
+      label: Other mouse software running
+      placeholder: Logi Options+, G HUB, Karabiner-Elements, BetterTouchTool…

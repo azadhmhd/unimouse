@@ -1,0 +1,35 @@
+[package]
+name = "unimouse"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.89"
+description = "One mouse config for macOS, Windows and Linux: button remaps, gestures, per-app profiles, smooth scrolling and a settings UI"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+keywords = ["mouse", "remap", "gestures", "scrolling", "input"]
+categories = ["accessibility", "command-line-utilities", "os"]
+exclude = ["/docs", "/.github"]
+
+[dependencies]
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+toml = "1.1.8"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+core-foundation = "0.10.1"
+core-graphics = { version = "0.25.0", features = ["highsierra"] }
+foreign-types = "0.5"
+objc2-app-kit = { version = "0.3.2", features = ["NSWorkspace", "NSRunningApplication", "NSEvent", "NSGraphicsContext", "objc2-core-graphics"] }
+objc2-core-graphics = "0.3.2"
+objc2-foundation = "0.3.2"
+
+[target."cfg(windows)".dependencies]
+windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_UI_Input_KeyboardAndMouse", "Win32_System_Threading", "Win32_System_Console"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+evdev = "0.13.2"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

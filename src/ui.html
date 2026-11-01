@@ -1,0 +1,879 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>unimouse</title>
+<style>
+:root {
+  --bg: #f4f4f7; --surface: #ffffff; --raised: #fafafc; --line: #e2e2e8; --line-strong: #c9c9d2;
+  --text: #17171c; --muted: #6b6b76; --faint: #a3a3ad;
+  --accent: #5146e5; --accent-2: #8f87ff; --accent-soft: #eceafd; --on-accent: #ffffff;
+  --ok: #16834a; --warn: #a15c00; --warn-soft: #fff4e0; --danger: #c42b3a; --danger-soft: #fde9eb;
+  --mouse: #e9e9ef; --mouse-edge: #c4c4cf; --mouse-part: #dcdce4;
+  --shadow: 0 1px 2px rgb(20 20 40 / .06), 0 8px 24px rgb(20 20 40 / .06);
+  --r: 12px; color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111116; --surface: #1b1b22; --raised: #22222b; --line: #2c2c36; --line-strong: #3d3d4a;
+    --text: #f1f1f6; --muted: #9b9ba8; --faint: #62626e;
+    --accent: #8b83ff; --accent-2: #b8b3ff; --accent-soft: #26244a; --on-accent: #0e0d1f;
+    --ok: #4ad07f; --warn: #f0b04a; --warn-soft: #2e2412; --danger: #ff6b7a; --danger-soft: #36161c;
+    --mouse: #2a2a34; --mouse-edge: #4a4a58; --mouse-part: #34343f;
+    --shadow: 0 1px 2px rgb(0 0 0 / .3), 0 8px 24px rgb(0 0 0 / .25); color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+/* top bar */
+.top { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 14px; padding: 10px 20px; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+.logo { display: flex; align-items: center; gap: 8px; font-weight: 700; letter-spacing: -.01em; }
+.logo .mark { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; color: var(--on-accent); background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+.device { display: flex; align-items: center; gap: 8px; padding: 5px 12px 5px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
+.device .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 20%, transparent); }
+.device.off .dot { background: var(--faint); box-shadow: none; }
+.device small { color: var(--muted); }
+.grow { flex: 1; }
+.status { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+.status.err { color: var(--danger); }
+.link { background: none; border: 0; padding: 0; color: var(--accent); font-weight: 600; }
+.switch { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
+.switch input { appearance: none; width: 36px; height: 22px; border-radius: 999px; background: var(--line-strong); position: relative; margin: 0; cursor: pointer; transition: background .2s; flex: none; }
+.switch input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .2s; box-shadow: 0 1px 2px rgb(0 0 0 / .3); }
+.switch input:checked { background: var(--accent); }
+.switch input:checked::after { transform: translateX(14px); }
+
+/* banners */
+.banners { padding: 0 20px; }
+.banner { display: flex; gap: 12px; align-items: flex-start; margin-top: 12px; padding: 12px 14px; border-radius: var(--r); background: var(--warn-soft); color: var(--text); border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent); }
+.banner svg { color: var(--warn); margin-top: 1px; }
+.banner.practice { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
+.banner.practice svg { color: var(--accent); }
+.banner b { display: block; }
+.banner p { margin: 2px 0 0; color: var(--muted); }
+.banner .actions { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+code.cmd { display: inline-block; padding: 4px 8px; border-radius: 6px; background: var(--surface); border: 1px solid var(--line); overflow-wrap: anywhere; }
+
+/* app strip */
+.apps { display: flex; gap: 6px; padding: 14px 20px 4px; overflow-x: auto; }
+.app { display: grid; justify-items: center; gap: 4px; width: 78px; padding: 8px 4px; border-radius: var(--r); border: 1px solid transparent; background: none; }
+.app:hover { background: var(--surface); }
+.app[aria-pressed="true"] { background: var(--surface); border-color: var(--accent); box-shadow: var(--shadow); }
+.avatar { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font-weight: 700; font-size: 16px; color: #fff; }
+.app span { font-size: 12px; max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app.add .avatar { background: none; border: 1.5px dashed var(--line-strong); color: var(--muted); }
+
+/* tabs */
+.tabs { display: flex; gap: 4px; padding: 10px 20px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.tabs button { border: 0; background: none; padding: 7px 14px; border-radius: 8px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+.tabs button[aria-selected="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+main { padding: 20px; max-width: 1180px; margin: 0 auto; }
+[hidden] { display: none !important; }
+
+/* buttons page */
+.buttons-page { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 20px; align-items: start; }
+.stage-card, .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); }
+.stage-card { padding: 14px 14px 18px; }
+.stage-head { display: flex; align-items: center; gap: 10px; padding: 4px 6px 0; }
+.stage-head h2 { margin: 0; font-size: 15px; }
+.stage-head p { margin: 0; color: var(--muted); font-size: 12px; }
+.stage { position: relative; width: 100%; max-width: 640px; margin: 4px auto 0; aspect-ratio: 520 / 560; }
+.stage svg.body { position: absolute; inset: 0; width: 100%; height: 100%; }
+.body .shell { fill: var(--mouse); stroke: var(--mouse-edge); stroke-width: 2; }
+.body .part { fill: var(--mouse-part); stroke: var(--mouse-edge); stroke-width: 1.5; }
+.body .seam { fill: none; stroke: var(--mouse-edge); stroke-width: 1.5; }
+.body .lead { stroke: var(--line-strong); stroke-width: 1.2; fill: none; stroke-dasharray: 2 3; }
+.body .lead.on { stroke: var(--accent); stroke-dasharray: none; stroke-width: 1.6; }
+.spot { position: absolute; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; border: 2px solid var(--surface); background: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); padding: 0; }
+.spot.fixed { background: var(--faint); box-shadow: 0 0 0 4px color-mix(in srgb, var(--faint) 25%, transparent); }
+.spot.unset { background: var(--surface); border-color: var(--accent); }
+.spot[aria-pressed="true"] { transform: scale(1.25); box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 35%, transparent); }
+.spot.hit { animation: ping .9s ease-out; }
+@keyframes ping { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 70%, transparent); } 100% { box-shadow: 0 0 0 26px transparent; } }
+.callout { position: absolute; transform: translateY(-50%); max-width: 26%; padding: 5px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); text-align: left; line-height: 1.25; }
+.callout.left { text-align: right; }
+.callout b { display: block; font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.callout small { display: block; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.callout.fixed b { color: var(--muted); font-weight: 500; }
+.callout[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.callout.inherited b { color: var(--muted); }
+.extras { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 10px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--raised); }
+.chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.chip.dashed { border-style: dashed; color: var(--accent); font-weight: 600; }
+.stage-foot { display: flex; justify-content: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+
+/* inspector */
+.inspector { position: sticky; top: 76px; padding: 18px; }
+.insp-head { display: flex; align-items: center; gap: 10px; }
+.insp-head h2 { margin: 0; font-size: 17px; }
+.tag { font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
+.scope { font-size: 12px; color: var(--muted); margin: 2px 0 14px; }
+.section-label { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 16px 0 8px; }
+.tile { width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); min-height: 48px; }
+.tile:hover { border-color: var(--accent); }
+.tile .ico { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); flex: none; }
+.tile .txt { flex: 1; min-width: 0; }
+.tile .txt b { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tile .txt small { display: block; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tile.empty .ico { background: none; border: 1.5px dashed var(--line-strong); color: var(--faint); }
+.tile.empty .txt b { color: var(--muted); font-weight: 500; }
+.tile.inherited .txt b { color: var(--muted); }
+.tile.inherited .ico { opacity: .55; }
+.compass .tile.inherited, .pair .tile.inherited { border-style: dashed; }
+.badge { font-size: 10.5px; font-weight: 600; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 0 5px; margin-left: 6px; }
+.compass { display: grid; grid-template-columns: 1fr 1fr 1fr; grid-template-rows: auto auto auto; gap: 6px; }
+.compass .tile { flex-direction: column; justify-content: center; text-align: center; padding: 8px 6px; min-height: 76px; gap: 4px; }
+.compass .tile .txt b { font-size: 12px; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.compass .tile .txt small { font-size: 11px; }
+.compass .hub { display: grid; place-items: center; text-align: center; color: var(--muted); font-size: 11px; border-radius: 50%; aspect-ratio: 1; margin: auto; width: 76px; background: radial-gradient(circle, var(--accent-soft), transparent 70%); }
+.compass .hub svg { width: 26px; height: 26px; color: var(--accent); }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.note { color: var(--muted); font-size: 12.5px; margin: 10px 0 0; }
+.danger-link { background: none; border: 0; padding: 0; color: var(--danger); font-size: 12.5px; margin-top: 16px; }
+
+/* palette */
+dialog { border: 0; padding: 0; border-radius: 18px; background: var(--surface); color: var(--text); box-shadow: 0 30px 80px rgb(0 0 0 / .35); width: min(640px, calc(100vw - 32px)); max-height: min(720px, calc(100vh - 40px)); }
+dialog::backdrop { background: rgb(10 10 20 / .45); backdrop-filter: blur(2px); }
+.pal-head { padding: 16px 18px 10px; border-bottom: 1px solid var(--line); }
+.pal-head small { color: var(--muted); }
+.pal-head h3 { margin: 2px 0 10px; font-size: 16px; }
+.search { width: 100%; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); }
+.pal-body { padding: 6px 18px 18px; overflow: auto; max-height: calc(min(720px, 100vh - 40px) - 170px); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.grid .tile { min-height: 44px; padding: 8px 10px; }
+.grid .tile .ico { width: 26px; height: 26px; }
+.grid .tile .txt b { white-space: normal; }
+.tile[aria-current="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.pal-foot { display: flex; gap: 8px; justify-content: space-between; padding: 12px 18px; border-top: 1px solid var(--line); }
+.btn { padding: 7px 14px; border-radius: 9px; border: 1px solid var(--line); background: var(--raised); font-weight: 600; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn:disabled { opacity: .5; cursor: default; }
+.keys { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; min-height: 54px; align-items: center; padding: 18px; border-radius: 12px; border: 1.5px dashed var(--line-strong); margin: 12px 0; }
+.keys.listening { border-color: var(--accent); background: var(--accent-soft); }
+.keycap { min-width: 38px; padding: 7px 10px; border-radius: 8px; background: var(--raised); border: 1px solid var(--line-strong); border-bottom-width: 3px; font-weight: 600; text-align: center; }
+.field { width: 100%; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); margin-top: 8px; }
+.examples { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.warn-text { color: var(--warn); font-size: 12.5px; margin-top: 8px; }
+
+/* other pages */
+.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.card { padding: 6px 18px; }
+.card h2 { font-size: 15px; margin: 14px 0 4px; }
+.row { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-top: 1px solid var(--line); }
+.row:first-of-type { border-top: 0; }
+.row .lbl { flex: 1; min-width: 0; }
+.row .lbl .mono { overflow-wrap: anywhere; }
+.row .lbl small { display: block; color: var(--muted); font-size: 12.5px; }
+input[type=range] { width: 180px; accent-color: var(--accent); }
+.val { min-width: 54px; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pad { height: 420px; overflow-y: auto; border-radius: 12px; border: 1px solid var(--line); background: var(--raised); padding: 6px 18px; }
+.pad p { margin: 14px 0; color: var(--muted); }
+.pad h3 { margin: 20px 0 6px; font-size: 14px; }
+.feed { list-style: none; margin: 0; padding: 0; }
+.feed li { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.feed li:first-child { border-top: 0; }
+.feed .ico { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); flex: none; }
+.feed .press .ico { background: var(--raised); color: var(--muted); border: 1px solid var(--line); }
+.feed .t { color: var(--faint); font-size: 12px; margin-left: auto; font-variant-numeric: tabular-nums; }
+.empty-state { color: var(--muted); text-align: center; padding: 30px 10px; }
+.app-row input[type=text] { flex: 1; min-width: 0; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--raised); }
+select.plain { padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--raised); }
+
+/* toast */
+.toasts { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); display: grid; gap: 8px; z-index: 20; justify-items: center; }
+.toast { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 12px; background: var(--text); color: var(--bg); box-shadow: var(--shadow); animation: rise .25s ease-out; }
+.toast .link { color: var(--accent-2); }
+.toast.big { padding: 14px 20px; font-size: 15px; }
+.toast.big .ico { color: var(--accent-2); }
+@keyframes rise { from { transform: translateY(10px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+@media (max-width: 980px) {
+  .buttons-page, .two { grid-template-columns: 1fr; }
+  .inspector { position: static; }
+}
+@media (max-width: 640px) {
+  .top { flex-wrap: wrap; padding: 10px 16px; }
+  .apps, .tabs, .banners { padding-left: 16px; padding-right: 16px; }
+  main { padding: 16px; }
+  .callout { display: none; }
+  .device small { display: none; }
+  .row { flex-wrap: wrap; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="logo"><span class="mark" id="logo-mark"></span>unimouse</div>
+  <div class="device off" id="device"><span class="dot"></span><span id="device-name">Looking for your mouse…</span><small id="device-sub"></small></div>
+  <span class="grow"></span>
+  <label class="switch" title="Try your buttons without them doing anything"><input type="checkbox" id="practice"> Practice</label>
+  <span class="status" id="status" role="status"></span>
+</header>
+
+<div class="banners" id="banners"></div>
+
+<nav class="apps" id="apps" aria-label="Apps"></nav>
+
+<div class="tabs" role="tablist">
+  <button role="tab" aria-selected="true" data-tab="buttons">Buttons</button>
+  <button role="tab" aria-selected="false" data-tab="scroll">Point &amp; scroll</button>
+  <button role="tab" aria-selected="false" data-tab="activity">Activity</button>
+  <button role="tab" aria-selected="false" data-tab="settings">Settings</button>
+</div>
+
+<main>
+  <section id="tab-buttons" class="buttons-page">
+    <div class="stage-card">
+      <div class="stage-head">
+        <div><h2 id="layout-title">Your mouse</h2><p>Press any button on your mouse, or click it here.</p></div>
+        <span class="grow"></span>
+        <label class="sr" for="layout">Mouse drawing</label>
+        <select class="plain" id="layout"></select>
+      </div>
+      <div class="stage" id="stage"></div>
+      <div class="extras" id="extras"></div>
+      <div class="stage-foot">
+        <button class="btn" id="find">+ Find a button</button>
+      </div>
+    </div>
+    <aside class="card inspector" id="inspector" aria-live="polite"></aside>
+  </section>
+
+  <section id="tab-scroll" hidden>
+    <div class="two">
+      <div class="card">
+        <h2>Scrolling</h2>
+        <div class="row"><div class="lbl">Smooth scrolling<small>Glides like a trackpad. Quick flicks go further.</small></div>
+          <label class="switch"><input type="checkbox" id="smooth"><span class="sr">Smooth scrolling</span></label></div>
+        <div class="row"><div class="lbl">Speed<small>How far one wheel notch scrolls.</small></div>
+          <input type="range" id="speed" min="0.25" max="4" step="0.05" aria-label="Scroll speed"><span class="val" id="speed-val"></span></div>
+        <div class="row"><div class="lbl">Reverse wheel<small>Flips the mouse wheel only. Trackpad direction stays the same.</small></div>
+          <label class="switch"><input type="checkbox" id="reverse"><span class="sr">Reverse wheel</span></label></div>
+        <h2>Gestures</h2>
+        <div class="row"><div class="lbl">Drag distance<small>How far you move while holding a button before it counts as a drag.</small></div>
+          <input type="range" id="drag" min="10" max="150" step="5" aria-label="Drag distance"><span class="val" id="drag-val"></span></div>
+        <div class="row"><div class="lbl">Long-press time<small>How long to hold a button for its long-press action.</small></div>
+          <input type="range" id="hold" min="200" max="1200" step="50" aria-label="Long-press time"><span class="val" id="hold-val"></span></div>
+        <p class="note">Hold ⌘/Ctrl, Alt or Shift while scrolling to get normal scrolling, for zooming and sideways scroll. Trackpads, the Magic Mouse and free-spin wheels are never changed.</p>
+      </div>
+      <div class="card">
+        <h2>Test pad</h2>
+        <p class="note" style="margin-top:0">Scroll in here with your mouse wheel. Changes on the left apply on your very next scroll.</p>
+        <div class="pad" id="pad" tabindex="0" aria-label="Scroll test area"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-activity" hidden>
+    <div class="two">
+      <div class="card">
+        <h2>Live activity</h2>
+        <p class="note" style="margin-top:0">Every button press unimouse sees, and what it did. Turn on <b>Practice</b> (top right) to try gestures without anything happening.</p>
+        <ul class="feed" id="feed"></ul>
+      </div>
+      <div class="card">
+        <h2>Why doesn't a button show up?</h2>
+        <p class="note">Some buttons never reach your computer as a normal button: they're handled inside the mouse (like the MX Master's wheel-mode button) or only talk to the maker's own app. If Logi Options+, G HUB or Razer Synapse is running, it can take buttons before unimouse sees them.</p>
+        <p class="note">On Windows, only the middle, back and forward buttons are visible to unimouse for now.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-settings" hidden>
+    <div class="two">
+      <div class="card">
+        <h2>General</h2>
+        <div class="row"><div class="lbl">Start at login<small id="login-msg">Run unimouse in the background whenever you log in.</small></div>
+          <label class="switch"><input type="checkbox" id="login"><span class="sr">Start at login</span></label></div>
+        <div class="row"><div class="lbl">Press to select<small>Pressing a button on your mouse selects it in the Buttons tab.</small></div>
+          <label class="switch"><input type="checkbox" id="press-select" checked><span class="sr">Press to select</span></label></div>
+        <div class="row"><div class="lbl">Config file<small class="mono" id="config-path"></small></div>
+          <button class="btn" id="reveal">Show</button></div>
+        <p class="note">Everything here is saved to that file as you go. You can also edit it by hand, and copy it to another computer.</p>
+      </div>
+      <div class="card">
+        <h2>Apps</h2>
+        <p class="note" style="margin-top:0">An app matches by its name on macOS, its .exe name on Windows or its window class on Linux. List several names with <code>|</code>, and end one with <code>*</code> to match any version, e.g. <code>adobe photoshop*</code>.</p>
+        <div id="app-rows"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<dialog id="palette" aria-labelledby="pal-title"></dialog>
+<dialog id="adder" aria-labelledby="add-title"></dialog>
+<dialog id="finder" aria-labelledby="find-title">
+  <div class="pal-head" style="text-align:center;border:0;padding-top:30px">
+    <div class="avatar" style="margin:0 auto 14px;background:linear-gradient(135deg,var(--accent),var(--accent-2))" id="find-ico"></div>
+    <h3 id="find-title">Press the button</h3>
+    <small>Press any button on your mouse. Nothing it normally does will happen while this is open.</small>
+  </div>
+  <div class="pal-foot" style="justify-content:center;border:0;padding-bottom:24px"><button class="btn" id="find-cancel">Cancel</button></div>
+</dialog>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script>
+"use strict";
+// ---------- tiny helpers ----------
+const token = new URLSearchParams(location.search).get("token");
+const $ = (s, root = document) => root.querySelector(s);
+const $$ = (s, root = document) => [...root.querySelectorAll(s)];
+const h = (tag, props = {}, ...kids) => {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (k === "class") e.className = v; else if (k === "style") e.style.cssText = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else if (k in e && typeof v !== "string") e[k] = v; else if (v !== false && v != null) e.setAttribute(k, v === true ? "" : v);
+  }
+  e.append(...kids.flat().filter(k => k != null && k !== false));
+  return e;
+};
+const ICON = {
+  back: "M15 18l-6-6 6-6", forward: "M9 18l6-6-6-6",
+  mission_control: "M3 4h8v7H3zM13 4h8v7h-8zM3 13h8v7H3zM13 13h8v7h-8z", app_windows: "M4 6h16v12H4zM8 10h8M8 14h5",
+  prev_desktop: "M3 5h18v14H3zM13 9l-3 3 3 3", next_desktop: "M3 5h18v14H3zM11 9l3 3-3 3", show_desktop: "M3 5h18v12H3zM8 21h8M12 17v4",
+  volume_up: "M4 9h4l5-4v14l-5-4H4zM16 9a4 4 0 010 6M19 6a8 8 0 010 12", volume_down: "M4 9h4l5-4v14l-5-4H4zM16 9a4 4 0 010 6",
+  mute: "M4 9h4l5-4v14l-5-4H4zM17 9l5 6M22 9l-5 6", play_pause: "M5 5v14l8-7zM16 5v14M20 5v14", next_track: "M5 5v14l9-7zM18 5v14",
+  prev_track: "M19 5v14l-9-7zM6 5v14", keys: "M3 6h18v12H3zM7 10h.01M11 10h.01M15 10h.01M7 14h10", open: "M14 4h6v6M20 4l-9 9M18 14v6H4V6h6",
+  run: "M3 5h18v14H3zM7 9l3 3-3 3M12 15h5", none: "M12 3a9 9 0 100 18 9 9 0 000-18zM5.6 5.6l12.8 12.8", native: "M4 12h13M12 6l6 6-6 6M21 5v14",
+  plus: "M12 5v14M5 12h14", mouse: "M12 3a6 6 0 016 6v6a6 6 0 01-12 0V9a6 6 0 016-6zM12 7v4", warn: "M12 3l10 18H2zM12 10v5M12 18h.01",
+  spark: "M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M6 18l2.5-2.5M15.5 8.5L18 6", hold: "M12 4v6M8 8l4 4 4-4M5 16h14v4H5z",
+};
+const icon = name => { const s = document.createElementNS("http://www.w3.org/2000/svg", "svg"); s.setAttribute("viewBox", "0 0 24 24"); s.setAttribute("class", "i"); s.innerHTML = `<path d="${ICON[name] || ICON.spark}"/>`; return s; };
+async function api(path, body) {
+  const url = `/api/${path}${path.includes("?") ? "&" : "?"}token=${encodeURIComponent(token)}`;
+  const r = await fetch(url, body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || `${r.status} ${r.statusText}`);
+  return j;
+}
+const store = { get: (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+
+// ---------- vocabulary ----------
+const GESTURE = { click: "", hold: "_hold", left: "_drag_left", right: "_drag_right", up: "_drag_up", down: "_drag_down", sup: "_scroll_up", sdown: "_scroll_down" };
+const GESTURE_NAME = { "": "Click", _hold: "Long press", _drag_left: "Hold + drag ←", _drag_right: "Hold + drag →", _drag_up: "Hold + drag ↑",
+  _drag_down: "Hold + drag ↓", _scroll_up: "Hold + scroll ↑", _scroll_down: "Hold + scroll ↓" };
+const CATEGORIES = [
+  ["Navigation", [["back", "Back"], ["forward", "Forward"]]],
+  ["Desktop & windows", [["mission_control", "Mission Control"], ["app_windows", "App windows"], ["prev_desktop", "Previous desktop"],
+    ["next_desktop", "Next desktop"], ["show_desktop", "Show desktop"]]],
+  ["Media", [["play_pause", "Play / pause"], ["next_track", "Next track"], ["prev_track", "Previous track"],
+    ["volume_up", "Volume up"], ["volume_down", "Volume down"], ["mute", "Mute"]]],
+  ["Shortcuts & apps", [["keys:", "Keyboard shortcut…"], ["open:", "Open website or app…"], ["run:", "Run a script…"]]],
+  ["Special", [["none", "Do nothing"], ["native", "Leave to the app"]]],
+];
+const LABEL = Object.fromEntries(CATEGORIES.flatMap(([, a]) => a));
+const iconFor = v => !v ? "plus" : v.startsWith("keys:") ? "keys" : v.startsWith("open:") ? "open" : v.startsWith("run:") ? "run" : v;
+
+let info = { os: "macos" };
+const mac = () => info.os === "macos";
+const KEYCAP = () => mac()
+  ? { mod: "⌘", ctrl: "⌃", alt: "⌥", shift: "⇧", win: "⌘", left: "←", right: "→", up: "↑", down: "↓", return: "↩", tab: "⇥", escape: "esc", space: "space", backspace: "⌫", delete: "⌦" }
+  : { mod: "Ctrl", ctrl: "Ctrl", alt: "Alt", shift: "Shift", win: "Win", left: "←", right: "→", up: "↑", down: "↓", return: "Enter", tab: "Tab", escape: "Esc", space: "Space", backspace: "⌫", delete: "Del" };
+const caps = combo => combo.split("+").map(k => KEYCAP()[k] || (k.length === 1 ? k.toUpperCase() : k.toUpperCase()));
+function describe(v) {
+  if (!v) return "Not set";
+  if (v.startsWith("keys:")) return caps(v.slice(5)).join(mac() ? "" : "+");
+  if (v.startsWith("open:")) { const t = v.slice(5); try { return `Open ${new URL(t).hostname}`; } catch { return `Open ${t.split(/[\\/]/).pop().replace(/\.app$/, "")}`; } }
+  if (v.startsWith("run:")) return `Run: ${v.slice(4)}`;
+  return LABEL[v] || v;
+}
+
+// ---------- mouse drawings ----------
+// Coordinates are in a 520 x 560 box. Spots are buttons; `fixed` parts are shown but can't be remapped.
+const CLASSIC = "M260 60 C335 60 368 125 370 225 L370 355 C370 465 325 520 260 520 C195 520 150 465 150 355 L150 225 C152 125 185 60 260 60 Z";
+const ERGO = "M290 58 C355 60 385 130 388 235 C391 345 380 440 336 500 C306 540 236 545 196 512 C176 496 160 486 136 478 C104 468 92 440 108 414 C122 392 152 386 168 368 C176 330 178 280 180 235 C184 125 222 58 290 58 Z";
+const LAYOUTS = {
+  mx: { name: "MX Master style", shell: ERGO,
+    parts: `<path class="seam" d="M290 60 L290 200 M181 205 Q290 222 386 205"/><rect class="part" x="277" y="92" width="26" height="64" rx="13"/>
+      <path class="seam" d="M281 108h18M281 118h18M281 128h18M281 138h18"/><rect class="part" x="282" y="168" width="16" height="12" rx="4"/>
+      <rect class="part" x="166" y="258" width="16" height="56" rx="7"/><path class="seam" d="M168 270h12M168 282h12M168 294h12M168 306h12"/>
+      <rect class="part" x="166" y="322" width="16" height="22" rx="5"/><rect class="part" x="170" y="352" width="16" height="22" rx="5"/>
+      <ellipse class="part" cx="128" cy="440" rx="20" ry="11"/>`,
+    spots: { 1: [235, 140, "left", 112], 2: [340, 140, "right", 250], 3: [290, 124, "right", 106], 5: [174, 333, "left", 335], 4: [178, 363, "left", 380], 6: [128, 440, "left", 440] },
+    fixed: [{ id: "mode", at: [290, 174, "right", 176], title: "Wheel mode", note: "Switches the wheel between click-by-click and free-spin. That happens inside the mouse, so it can't be remapped." },
+            { id: "thumb", at: [174, 286, "left", 288], title: "Thumb wheel", note: "Scrolls sideways. Hold Shift with the main wheel for the same thing on other mice." }],
+    names: { 3: "Wheel button", 4: "Back button", 5: "Forward button", 6: "Gesture button" },
+    hints: { 6: "If pressing it doesn't light up here, your mouse only reports it to Logitech's own app." } },
+  five: { name: "5-button mouse", shell: CLASSIC,
+    parts: `<path class="seam" d="M260 62 L260 215 M151 215 Q260 235 369 215"/><rect class="part" x="247" y="100" width="26" height="62" rx="13"/>
+      <path class="seam" d="M251 116h18M251 126h18M251 136h18M251 146h18"/><rect class="part" x="138" y="232" width="14" height="40" rx="6"/><rect class="part" x="138" y="280" width="14" height="40" rx="6"/>`,
+    spots: { 1: [205, 150, "left", 150], 2: [315, 150, "right", 190], 3: [260, 131, "right", 128], 5: [145, 252, "left", 252], 4: [145, 300, "left", 304] },
+    fixed: [], names: { 3: "Wheel button", 4: "Back button", 5: "Forward button" }, hints: {} },
+  three: { name: "3-button mouse", shell: CLASSIC,
+    parts: `<path class="seam" d="M260 62 L260 215 M151 215 Q260 235 369 215"/><rect class="part" x="247" y="100" width="26" height="62" rx="13"/>
+      <path class="seam" d="M251 116h18M251 126h18M251 136h18M251 146h18"/>`,
+    spots: { 1: [205, 150, "left", 150], 2: [315, 150, "right", 190], 3: [260, 131, "right", 128] },
+    fixed: [], names: { 3: "Wheel button" }, hints: {} },
+  gaming: { name: "Gaming mouse", shell: CLASSIC,
+    parts: `<path class="seam" d="M260 62 L260 215 M151 215 Q260 235 369 215"/><rect class="part" x="247" y="100" width="26" height="62" rx="13"/>
+      <path class="seam" d="M251 116h18M251 126h18M251 136h18M251 146h18"/><rect class="part" x="138" y="232" width="14" height="40" rx="6"/><rect class="part" x="138" y="280" width="14" height="40" rx="6"/>
+      ${[0, 1, 2, 3, 4, 5].map(i => `<rect class="part" x="${i % 2 ? 150 : 132}" y="${336 + Math.floor(i / 2) * 26}" width="15" height="20" rx="4"/>`).join("")}`,
+    spots: { 1: [205, 150, "left", 150], 2: [315, 150, "right", 190], 3: [260, 131, "right", 128], 5: [145, 252, "left", 236], 4: [145, 300, "left", 280],
+      6: [139, 346, "left", 324], 7: [157, 346, "left", 362], 8: [139, 372, "left", 400], 9: [157, 372, "left", 438], 10: [139, 398, "left", 476], 11: [157, 398, "left", 514] },
+    fixed: [], names: { 3: "Wheel button", 4: "Back button", 5: "Forward button" }, hints: {} },
+};
+function guessLayout(name, seen) {
+  if (/mx master/i.test(name)) return "mx";
+  if (/g502|g600|g604|naga|scimitar|g903|kone|basilisk v3 pro|m65/i.test(name) || Math.max(0, ...seen) > 5) return "gaming";
+  return "five";
+}
+const isMouseName = n => !/keyboard|receiver|trackpad|ducky|keychron|tablet|pen\b/i.test(n);
+
+// ---------- app packs ----------
+// One click: a sensible setup for apps people use all day. Shortcuts that differ per OS are picked here.
+const PACKS = [
+  { name: "Web browsers", match: "google chrome|chrome|google-chrome|safari|firefox|microsoft edge|msedge|arc|brave browser|brave",
+    map: () => ({ button5_drag_up: "keys:mod+t", button5_drag_down: "keys:mod+w", button5_drag_left: "keys:mod+shift+t",
+                  button4_scroll_up: "keys:ctrl+shift+tab", button4_scroll_down: "keys:ctrl+tab", button3_hold: "keys:mod+r" }),
+    blurb: "Flip tabs, open, close and reopen tabs with gestures. One setup for Chrome, Safari, Firefox, Edge, Arc and Brave." },
+  { name: "VS Code", match: "code|visual studio code", blurb: "Command palette, quick open and editor switching.",
+    map: os => ({ button5: "keys:mod+shift+p", button5_hold: "keys:mod+p",
+                  button3_drag_left: os === "macos" ? "keys:mod+alt+left" : "keys:ctrl+pageup",
+                  button3_drag_right: os === "macos" ? "keys:mod+alt+right" : "keys:ctrl+pagedown" }) },
+  { name: "Figma", match: "figma", blurb: "Hold the wheel and scroll to zoom. Back and forward undo and redo.",
+    map: () => ({ button3_scroll_up: "keys:mod+=", button3_scroll_down: "keys:mod+-", button4: "keys:mod+z", button5: "keys:mod+shift+z", button3_hold: "keys:shift+1" }) },
+  { name: "Photoshop", match: "adobe photoshop*|photoshop", blurb: "Zoom on the wheel, undo and redo on the side buttons.",
+    map: () => ({ button3_scroll_up: "keys:mod+=", button3_scroll_down: "keys:mod+-", button4: "keys:mod+z", button5: "keys:mod+shift+z" }) },
+  { name: "Zoom", match: "zoom.us|zoom", blurb: "Mute and camera on your side buttons, for calls.",
+    map: os => os === "macos" ? { button5: "keys:mod+shift+a", button4: "keys:mod+shift+v" } : { button5: "keys:alt+a", button4: "keys:alt+v" } },
+  { name: "Spotify", match: "spotify", blurb: "Side buttons skip tracks, the wheel button plays and pauses.",
+    map: () => ({ button4: "prev_track", button5: "next_track", button3: "play_pause" }) },
+  { name: "Slack", match: "slack", blurb: "Jump to any conversation with the forward button.",
+    map: () => ({ button5: "keys:mod+k", button5_hold: "keys:mod+shift+a" }) },
+];
+
+// ---------- state ----------
+let cfg, profile = "default", selected = 4, lastEvent = 0, primed = false, health = { mice: [], conflicts: [], input_active: true };
+const seen = new Set(), recentApps = new Set(), undoStack = [];
+let layoutId = store.get("unimouse.layout", ""), finding = false, palette = null;
+const table = () => profile === "default" ? cfg.default : cfg.app[profile];
+const L = () => LAYOUTS[layoutId] || LAYOUTS.five;
+const buttonName = n => n === 1 ? "Left click" : n === 2 ? "Right click" : L().names[n] || `Button ${n}`;
+function effective(n, suffix) {
+  const k = `button${n}${suffix}`, own = table()[k];
+  if (own || profile === "default") return { value: own || "", inherited: false };
+  return { value: cfg.default[k] || "", inherited: !!cfg.default[k] };
+}
+const appTitle = k => k === "default" ? "All apps" : k.split("|")[0].replace(/\*$/, "").replace(/\b\w/g, c => c.toUpperCase());
+const hue = s => [...s].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 7);
+
+// ---------- saving, undo ----------
+let saveTimer;
+function setStatus(text, err = false) { const s = $("#status"); s.className = `status${err ? " err" : ""}`; s.replaceChildren(text); }
+function change(mutate, message = "Saved") {
+  undoStack.push(JSON.stringify(cfg)); if (undoStack.length > 60) undoStack.shift();
+  mutate(); renderAll(); save(message);
+}
+function save(message = "Saved") {
+  clearTimeout(saveTimer); setStatus("Saving…");
+  saveTimer = setTimeout(async () => {
+    try { await api("config", cfg); setStatus(`${message} ✓`); toast(message, undoStack.length ? "Undo" : null, undo); }
+    catch (e) { setStatus(`Not saved: ${e.message}`, true); }
+  }, 250);
+}
+function undo() {
+  if (!undoStack.length) return;
+  cfg = JSON.parse(undoStack.pop()); if (profile !== "default" && !cfg.app[profile]) profile = "default";
+  renderAll(); save("Undone");
+}
+addEventListener("keydown", e => {
+  const inField = e.target instanceof Element && e.target.closest("input, dialog");
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z" && !e.shiftKey && !inField) { e.preventDefault(); undo(); }
+});
+let toastTimer;
+function toast(text, actionText, action, big = false, ico = null) {
+  const box = $("#toasts"); clearTimeout(toastTimer);
+  const t = h("div", { class: `toast${big ? " big" : ""}` }, ico && h("span", { class: "ico" }, icon(ico)), h("span", {}, text),
+    actionText && h("button", { class: "link", onclick: () => { box.replaceChildren(); action(); } }, actionText));
+  box.replaceChildren(t);
+  toastTimer = setTimeout(() => box.replaceChildren(), big ? 2600 : 4000);
+}
+
+// ---------- top: device, banners, apps ----------
+function bestMouse() { return health.mice.find(m => isMouseName(m.name)) || null; }
+function renderDevice() {
+  const m = bestMouse(), d = $("#device");
+  d.classList.toggle("off", !health.input_active);
+  $("#device-name").textContent = m ? m.name : health.input_active ? "Your mouse" : "Not connected yet";
+  $("#device-sub").textContent = !health.input_active ? "· waiting for access" : m?.transport ? `· ${m.transport}` : "";
+}
+function renderBanners() {
+  const b = [];
+  if (!health.input_active && mac()) b.push(h("div", { class: "banner" }, icon("warn"), h("div", {},
+    h("b", {}, "unimouse can't see your mouse yet"),
+    h("p", {}, "macOS needs you to allow it once, under Accessibility. Click + there and add this program:"),
+    h("div", { class: "actions" }, h("code", { class: "cmd" }, info.exe || "unimouse"),
+      h("button", { class: "btn primary", onclick: () => api("open", { what: "accessibility" }) }, "Open Accessibility settings")),
+    h("p", {}, "This page updates by itself once it's allowed."))));
+  else if (!health.input_active) b.push(h("div", { class: "banner" }, icon("warn"), h("div", {}, h("b", {}, "unimouse isn't capturing your mouse"),
+    h("p", {}, info.os === "linux" ? "Check that you're in the input group and /dev/uinput is writable (see the README)." : "Try restarting unimouse."))));
+  for (const name of health.conflicts) {
+    const fix = name === "Logi Options+" && mac()
+      ? [h("p", {}, "Pause it until your next restart with:"), h("div", { class: "actions" },
+          h("code", { class: "cmd" }, "launchctl bootout gui/$(id -u) /Library/LaunchAgents/com.logi.optionsplus.plist"),
+          h("button", { class: "btn", onclick: e => { navigator.clipboard?.writeText("launchctl bootout gui/$(id -u) /Library/LaunchAgents/com.logi.optionsplus.plist"); e.target.textContent = "Copied"; } }, "Copy"))]
+      : [h("p", {}, `Quit ${name} (or turn off its button settings) so the two don't fight over the same buttons.`)];
+    b.push(h("div", { class: "banner" }, icon("warn"), h("div", {}, h("b", {}, `${name} is running`),
+      h("p", {}, "It can take over your mouse buttons before unimouse sees them."), ...fix)));
+  }
+  if ($("#practice").checked) b.unshift(h("div", { class: "banner practice" }, icon("spark"), h("div", {}, h("b", {}, "Practice mode"),
+    h("p", {}, "Your buttons won't do anything right now. Try clicks, long presses and gestures, and watch what they would do."))));
+  $("#banners").replaceChildren(...b);
+}
+function renderApps() {
+  const keys = ["default", ...Object.keys(cfg.app)];
+  $("#apps").replaceChildren(...keys.map(k => h("button", { class: "app", "aria-pressed": String(profile === k), title: k === "default" ? "Settings for every app" : k.split("|").join(", "),
+      onclick: () => { profile = k; renderAll(); } },
+    h("span", { class: "avatar", style: k === "default" ? "background:linear-gradient(135deg,var(--accent),var(--accent-2))" : `background:hsl(${hue(k)} 55% 48%)` },
+      k === "default" ? icon("mouse") : appTitle(k)[0]),
+    h("span", {}, appTitle(k)))),
+    h("button", { class: "app add", onclick: openAdder, title: "Add an app" }, h("span", { class: "avatar" }, icon("plus")), h("span", {}, "Add app")));
+}
+
+// ---------- buttons tab ----------
+function allButtons() {
+  const nums = new Set([...Object.keys(L().spots).map(Number).filter(n => n > 2), ...seen]);
+  for (const t of [cfg.default, ...Object.values(cfg.app)]) for (const k of Object.keys(t)) { const m = /^button(\d+)/.exec(k); if (m) nums.add(+m[1]); }
+  return [...nums].sort((a, b) => a - b);
+}
+function renderLayoutPicker() {
+  $("#layout").replaceChildren(...Object.entries(LAYOUTS).map(([id, l]) => h("option", { value: id }, l.name)));
+  $("#layout").value = layoutId;
+  $("#layout-title").textContent = bestMouse()?.name || "Your mouse";
+}
+function renderStage() {
+  const l = L(), stage = $("#stage");
+  const leads = [], overlay = [];
+  const place = (x, y) => `left:${x / 5.2}%;top:${y / 5.6}%`;
+  const add = (key, [x, y, side, ly], title, sub, cls, onclick, pressed) => {
+    const lx = side === "left" ? 118 : 402;
+    leads.push(`<path class="lead${pressed ? " on" : ""}" d="M${x} ${y} L${side === "left" ? x - 14 : x + 14} ${ly} L${lx} ${ly}"/>`);
+    overlay.push(h("button", { class: `spot ${cls}`, style: place(x, y), "aria-pressed": String(pressed), "data-spot": key, onclick, "aria-label": `${sub}: ${title}` }));
+    overlay.push(h("button", { class: `callout ${side} ${cls}`, style: side === "left" ? `right:${100 - lx / 5.2}%;top:${ly / 5.6}%` : `left:${lx / 5.2}%;top:${ly / 5.6}%`,
+      "aria-pressed": String(pressed), onclick, tabindex: "-1" }, h("b", {}, title), h("small", {}, sub)));
+  };
+  for (const [n, at] of Object.entries(l.spots)) {
+    const b = +n;
+    if (b <= 2) { add(b, at, buttonName(b), "Always stays the same", "fixed", () => select(b), selected === b); continue; }
+    const e = effective(b, "");
+    add(b, at, e.value ? describe(e.value) : hasGestures(b) ? "Gestures" : "Not set", buttonName(b),
+        `${e.value || hasGestures(b) ? "" : "unset"}${e.inherited ? " inherited" : ""}`, () => select(b), selected === b);
+  }
+  for (const f of l.fixed) add(f.id, f.at, f.title, "Handled by the mouse", "fixed", () => select(f.id), selected === f.id);
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  stage.replaceChildren(svg, ...overlay);
+  svg.setAttribute("viewBox", "0 0 520 560"); svg.setAttribute("class", "body"); svg.setAttribute("aria-hidden", "true");
+  svg.innerHTML = `<path class="shell" d="${l.shell}"/>${l.parts}${leads.join("")}`;
+  const extra = allButtons().filter(n => !(n in l.spots));
+  $("#extras").replaceChildren(...extra.map(n => h("button", { class: "chip", "aria-pressed": String(selected === n), "data-spot": n, onclick: () => select(n) },
+    icon("mouse"), `${buttonName(n)} · ${describe(effective(n, "").value)}`)));
+}
+const hasGestures = n => Object.values(GESTURE).some(s => s && effective(n, s).value);
+function select(n) { selected = n; renderStage(); renderInspector(); }
+
+function tileFor(n, suffix, compact = false) {
+  const e = effective(n, suffix);
+  const cls = `tile${e.value ? "" : " empty"}${e.inherited ? " inherited" : ""}`;
+  return h("button", { class: cls, onclick: () => openPalette(n, suffix), "aria-label": `${buttonName(n)}, ${GESTURE_NAME[suffix]}: ${describe(e.value)}` },
+    h("span", { class: "ico" }, icon(iconFor(e.value))),
+    h("span", { class: "txt" }, h("b", {}, e.value ? describe(e.value) : compact ? "Add" : "Not set"),
+      h("small", {}, compact ? GESTURE_NAME[suffix].replace("Hold + ", "") : e.inherited ? "From All apps" : GESTURE_NAME[suffix])));
+}
+function renderInspector() {
+  const box = $("#inspector"), l = L();
+  const fixed = l.fixed.find(f => f.id === selected);
+  if (fixed || selected === 1 || selected === 2) {
+    box.replaceChildren(h("div", { class: "insp-head" }, h("h2", {}, fixed ? fixed.title : buttonName(selected))),
+      h("p", { class: "note" }, fixed ? fixed.note : "Left and right click always do what they normally do, so you can never lock yourself out of your computer."));
+    return;
+  }
+  const n = selected;
+  const where = profile === "default" ? "In every app" : `In ${appTitle(profile)} · anything not set here comes from All apps`;
+  box.replaceChildren(...[
+    h("div", { class: "insp-head" }, h("h2", {}, buttonName(n)), h("span", { class: "tag" }, `button ${n}`)),
+    h("p", { class: "scope" }, where),
+    l.hints[n] && h("p", { class: "note", style: "margin-top:-6px" }, l.hints[n]),
+    h("div", { class: "section-label" }, "Press"),
+    h("div", { style: "display:grid;gap:6px" }, tileFor(n, ""), tileFor(n, "_hold")),
+    h("div", { class: "section-label" }, "Hold and move"),
+    h("div", { class: "compass" },
+      h("span"), tileFor(n, "_drag_up", true), h("span"),
+      tileFor(n, "_drag_left", true), h("div", { class: "hub" }, h("div", {}, icon("hold"), h("div", {}, "hold & move"))), tileFor(n, "_drag_right", true),
+      h("span"), tileFor(n, "_drag_down", true), h("span")),
+    h("div", { class: "section-label" }, "Hold and scroll"),
+    h("div", { class: "pair" }, tileFor(n, "_scroll_up", true), tileFor(n, "_scroll_down", true)),
+    h("button", { class: "danger-link", onclick: () => change(() => { for (const s of Object.values(GESTURE)) delete table()[`button${n}${s}`]; }, `${buttonName(n)} reset`) },
+      profile === "default" ? "Reset this button" : `Use All apps settings for this button in ${appTitle(profile)}`)].filter(Boolean));
+}
+
+// ---------- action palette ----------
+function openPalette(n, suffix) {
+  const d = $("#palette"), e = effective(n, suffix);
+  palette = { n, suffix };
+  const pack = profile !== "default" && PACKS.find(p => p.match === profile);
+  const pick = v => { d.close(); change(() => { if (v) table()[`button${n}${suffix}`] = v; else delete table()[`button${n}${suffix}`]; }, `${buttonName(n)} · ${GESTURE_NAME[suffix]}: ${describe(v)}`); };
+  const tile = (v, label) => h("button", { class: "tile", "data-q": `${label} ${v}`.toLowerCase(), "aria-current": String(e.value === v || (v.endsWith(":") && e.value.startsWith(v))),
+      onclick: () => v.endsWith(":") ? custom(v) : pick(v) },
+    h("span", { class: "ico" }, icon(iconFor(v))), h("span", { class: "txt" }, h("b", {}, label)));
+  const sections = CATEGORIES.map(([name, items]) => h("section", {}, h("div", { class: "section-label" }, name), h("div", { class: "grid" }, items.map(([v, l]) => tile(v, l)))));
+  const suggestions = pack ? Object.entries(pack.map(info.os)).filter(([k]) => k === `button${n}${suffix}`) : [];
+  const body = h("div", { class: "pal-body" },
+    suggestions.length ? h("section", {}, h("div", { class: "section-label" }, `Suggested for ${pack.name}`),
+      h("div", { class: "grid" }, suggestions.map(([, v]) => tile(v, describe(v))))) : null, sections);
+  const search = h("input", { class: "search", type: "search", placeholder: "Search actions…", "aria-label": "Search actions",
+    oninput: () => { const q = search.value.toLowerCase().trim(); for (const t of $$(".tile", body)) t.hidden = !!q && !t.dataset.q.includes(q);
+      for (const s of $$("section", body)) s.hidden = !$$(".tile", s).some(t => !t.hidden); } });
+  d.replaceChildren(
+    h("div", { class: "pal-head" }, h("small", {}, `${buttonName(n)} · ${profile === "default" ? "All apps" : appTitle(profile)}`),
+      h("h3", { id: "pal-title" }, GESTURE_NAME[suffix]), search), body,
+    h("div", { class: "pal-foot" },
+      h("button", { class: "btn", onclick: () => pick("") }, profile === "default" ? "Clear" : "Use All apps setting"),
+      h("button", { class: "btn", onclick: () => d.close() }, "Cancel")));
+  d.showModal(); search.focus();
+  function custom(kind) {
+    const current = e.value.startsWith(kind) ? e.value.slice(kind.length) : "";
+    const field = h("input", { class: "field", type: "text", value: current, "aria-label": LABEL[kind] });
+    const saveBtn = h("button", { class: "btn primary", disabled: !current, onclick: () => pick(kind + field.value.trim()) }, "Save");
+    const capsBox = h("div", { class: "keys listening", "aria-live": "polite" });
+    const showCaps = () => capsBox.replaceChildren(...(field.value.trim() ? caps(field.value.trim()).map(c => h("span", { class: "keycap" }, c))
+      : [h("span", { class: "note", style: "margin:0" }, "Press the shortcut now…")]));
+    field.addEventListener("input", () => { saveBtn.disabled = !field.value.trim(); if (kind === "keys:") showCaps(); });
+    field.addEventListener("keydown", ev => { if (ev.key === "Enter" && !saveBtn.disabled && kind !== "keys:") saveBtn.click(); });
+    let content;
+    if (kind === "keys:") {
+      const onKey = ev => {
+        if (document.activeElement === field) return; // typing in the text box
+        ev.preventDefault(); ev.stopPropagation();
+        if (["Meta", "Control", "Alt", "Shift"].includes(ev.key)) return;
+        const key = codeToName(ev.code); if (!key) return;
+        const mods = [];
+        if (mac()) { if (ev.metaKey) mods.push("mod"); if (ev.ctrlKey) mods.push("ctrl"); } else { if (ev.ctrlKey) mods.push("mod"); if (ev.metaKey) mods.push("win"); }
+        if (ev.altKey) mods.push("alt"); if (ev.shiftKey) mods.push("shift");
+        if (key === "escape" && !mods.length) return;
+        field.value = [...mods, key].join("+"); field.dispatchEvent(new Event("input"));
+      };
+      addEventListener("keydown", onKey, true); d.addEventListener("close", () => removeEventListener("keydown", onKey, true), { once: true });
+      showCaps();
+      content = [capsBox, h("p", { class: "note" }, mac() ? "⌘ is saved as “mod”, so the same shortcut uses Ctrl on Windows and Linux. Some shortcuts like ⌘W can't be recorded in a browser: type them below instead."
+                                                       : "Ctrl is saved as “mod”, so the same shortcut uses ⌘ on a Mac. Type below if a shortcut can't be recorded."),
+        h("label", { class: "note" }, "Or type it, e.g. ", h("code", {}, "mod+shift+t"), field)];
+      setTimeout(() => d.focus(), 0);
+    } else if (kind === "open:") {
+      field.placeholder = "https://… or an app or file path";
+      content = [h("p", { class: "note" }, "A website, a file or folder, or an app."), field,
+        h("div", { class: "examples" }, (mac() ? ["https://claude.ai", "/Applications/Calculator.app", "~/Downloads"] : ["https://claude.ai", "calc.exe", "%USERPROFILE%\\Downloads"])
+          .map(x => h("button", { class: "chip", onclick: () => { field.value = x; field.dispatchEvent(new Event("input")); } }, x)))];
+      setTimeout(() => field.focus(), 0);
+    } else {
+      field.placeholder = mac() ? "e.g. say hello" : "e.g. notepad";
+      content = [h("p", { class: "note" }, "Any command or script, run by your computer's shell. Good for automations and AI tools."), field,
+        h("p", { class: "warn-text" }, "It runs with your user's permissions. Only use commands you trust.")];
+      setTimeout(() => field.focus(), 0);
+    }
+    d.replaceChildren(
+      h("div", { class: "pal-head" }, h("small", {}, `${buttonName(n)} · ${GESTURE_NAME[suffix]}`), h("h3", { id: "pal-title" }, LABEL[kind].replace("…", ""))),
+      h("div", { class: "pal-body" }, content),
+      h("div", { class: "pal-foot" }, h("button", { class: "btn", onclick: () => openPalette(n, suffix) }, "← All actions"), saveBtn));
+  }
+}
+function codeToName(c) {
+  if (/^Key[A-Z]$/.test(c)) return c[3].toLowerCase();
+  if (/^Digit\d$/.test(c)) return c[5];
+  if (/^F([1-9]|1[0-2])$/.test(c)) return c.toLowerCase();
+  return { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down", Tab: "tab", Space: "space", Enter: "return",
+    Escape: "escape", Backspace: "backspace", Delete: "delete", Home: "home", End: "end", PageUp: "pageup", PageDown: "pagedown",
+    Minus: "-", Equal: "=", BracketLeft: "[", BracketRight: "]", Semicolon: ";", Quote: "'", Backquote: "`", Backslash: "\\",
+    Comma: ",", Period: ".", Slash: "/" }[c];
+}
+
+// ---------- add an app ----------
+function openAdder() {
+  const d = $("#adder");
+  const name = h("input", { class: "field", type: "text", placeholder: "App name, e.g. Safari", "aria-label": "App name" });
+  const add = (key, map = {}) => {
+    key = key.trim().toLowerCase(); if (!key) return;
+    d.close();
+    change(() => { cfg.app[key] = { ...(cfg.app[key] || {}), ...map }; profile = key; }, `Added ${appTitle(key)}`);
+  };
+  name.addEventListener("keydown", e => { if (e.key === "Enter") add(name.value); });
+  const recent = [...recentApps].filter(a => !Object.keys(cfg.app).some(k => k.split("|").includes(a.toLowerCase())));
+  d.replaceChildren(
+    h("div", { class: "pal-head" }, h("h3", { id: "add-title" }, "Add an app"), h("small", {}, "Give an app its own buttons. Anything you don't set uses All apps.")),
+    h("div", { class: "pal-body" },
+      h("div", { class: "section-label" }, "Recently used"),
+      recent.length ? h("div", { class: "examples" }, recent.map(a => h("button", { class: "chip", onclick: () => add(a) }, `+ ${a}`)))
+        : h("p", { class: "note", style: "margin:0" }, "Switch to an app and press a side or wheel button: it shows up here."),
+      h("div", { class: "section-label" }, "Or type its name"),
+      h("div", { style: "display:flex;gap:8px;align-items:center" }, name, h("button", { class: "btn primary", style: "margin-top:8px", onclick: () => add(name.value) }, "Add")),
+      h("div", { class: "section-label" }, "Ready-made setups"),
+      h("div", { class: "grid", style: "grid-template-columns:repeat(auto-fill,minmax(250px,1fr))" }, PACKS.map(p => h("button", { class: "tile", onclick: () => add(p.match, p.map(info.os)) },
+        h("span", { class: "avatar", style: `width:30px;height:30px;font-size:13px;border-radius:8px;background:hsl(${hue(p.match)} 55% 48%)` }, p.name[0]),
+        h("span", { class: "txt" }, h("b", {}, p.name), h("small", { style: "white-space:normal" }, p.blurb)))))),
+    h("div", { class: "pal-foot" }, h("span"), h("button", { class: "btn", onclick: () => d.close() }, "Close")));
+  d.showModal(); name.focus();
+}
+
+// ---------- find a button ----------
+$("#find").addEventListener("click", async () => { finding = true; await api("learn", { on: true }).catch(() => {}); $("#finder").showModal(); });
+const stopFinding = () => { finding = false; api("learn", { on: false }).catch(() => {}); if ($("#finder").open) $("#finder").close(); };
+$("#find-cancel").addEventListener("click", stopFinding);
+$("#finder").addEventListener("cancel", stopFinding);
+
+// ---------- live events ----------
+function flash(n) {
+  for (const el of $$(`[data-spot="${n}"]`)) { el.classList.remove("hit"); void el.offsetWidth; el.classList.add("hit"); }
+}
+function feedItem(ev) {
+  const t = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  if (ev.kind === "action") {
+    const suffix = ev.trigger.replace(/^button\d+/, "");
+    return h("li", {}, h("span", { class: "ico" }, icon(iconFor(ev.action))),
+      h("span", {}, h("b", {}, describe(ev.action)), h("div", { class: "note", style: "margin:0" }, `${buttonName(ev.button)} · ${GESTURE_NAME[suffix]}${$("#practice").checked ? " · practice" : ""}`)),
+      h("span", { class: "t" }, t));
+  }
+  return h("li", { class: "press" }, h("span", { class: "ico" }, icon("mouse")),
+    h("span", {}, `${buttonName(ev.button)} pressed`, ev.app ? h("span", { class: "note" }, ` in ${ev.app}`) : null), h("span", { class: "t" }, t));
+}
+async function poll() {
+  if (!document.hidden && cfg) {
+    try {
+      const events = await api(`events?since=${lastEvent}`);
+      const replay = !primed; primed = true;
+      for (const ev of events) {
+        lastEvent = ev.id;
+        if (ev.app) recentApps.add(ev.app);
+        if (replay) continue; // don't replay what happened before the page opened
+        const feed = $("#feed"); $(".empty-state", feed)?.remove();
+        feed.prepend(feedItem(ev)); while (feed.children.length > 60) feed.lastChild.remove();
+        if (ev.kind === "press") {
+          if (finding) {
+            stopFinding();
+            const fresh = !allButtons().includes(ev.button); seen.add(ev.button); showTab("buttons"); select(ev.button);
+            toast(fresh ? `Found ${buttonName(ev.button)}. Set it up on the right.` : `That's the ${buttonName(ev.button)}.`, null, null, true, "spark");
+          } else {
+            const isNew = !seen.has(ev.button) && !allButtons().includes(ev.button);
+            seen.add(ev.button);
+            if ($("#press-select").checked && !$("#palette").open && !$("#adder").open) select(ev.button); else if (isNew) renderStage();
+          }
+          flash(ev.button);
+        } else if ($("#practice").checked) {
+          const suffix = ev.trigger.replace(/^button\d+/, "");
+          toast(`${buttonName(ev.button)} · ${GESTURE_NAME[suffix]}  →  ${describe(ev.action)}`, null, null, true, iconFor(ev.action));
+        }
+      }
+    } catch (e) { setStatus("unimouse isn't responding. Is it still running?", true); }
+  }
+  setTimeout(poll, finding ? 150 : 400);
+}
+async function pollHealth() {
+  try {
+    const was = JSON.stringify(health); health = await api("health");
+    if (!layoutId) { layoutId = guessLayout(bestMouse()?.name || "", [...seen]); }
+    if (JSON.stringify(health) !== was) { renderDevice(); renderBanners(); renderLayoutPicker(); renderStage(); }
+  } catch {}
+  setTimeout(pollHealth, health.input_active ? 15000 : 3000);
+}
+
+// ---------- practice ----------
+let practiceTimer;
+$("#practice").addEventListener("change", async e => {
+  clearInterval(practiceTimer);
+  await api("practice", { on: e.target.checked }).catch(err => setStatus(err.message, true));
+  if (e.target.checked) practiceTimer = setInterval(() => api("practice", { on: true }).catch(() => {}), 60000);
+  renderBanners();
+});
+addEventListener("pagehide", () => { if ($("#practice").checked) navigator.sendBeacon?.(`/api/practice?token=${token}`); });
+
+// ---------- point & scroll ----------
+function renderScroll() {
+  $("#smooth").checked = cfg.scroll.smooth; $("#reverse").checked = cfg.scroll.reverse;
+  $("#speed").value = cfg.scroll.speed; $("#speed-val").textContent = `${(+cfg.scroll.speed).toFixed(2)}×`;
+  $("#drag").value = cfg.drag_threshold; $("#drag-val").textContent = `${Math.round(cfg.drag_threshold)} px`;
+  $("#hold").value = cfg.hold_ms; $("#hold-val").textContent = `${cfg.hold_ms} ms`;
+}
+const live = (id, apply, msg) => {
+  $(id).addEventListener("input", e => { apply(e.target); renderScroll(); });
+  $(id).addEventListener("change", e => change(() => apply(e.target), msg));
+};
+live("#smooth", t => cfg.scroll.smooth = t.checked, "Smooth scrolling updated");
+live("#reverse", t => cfg.scroll.reverse = t.checked, "Wheel direction updated");
+live("#speed", t => cfg.scroll.speed = +t.value, "Scroll speed updated");
+live("#drag", t => cfg.drag_threshold = +t.value, "Drag distance updated");
+live("#hold", t => cfg.hold_ms = +t.value, "Long-press time updated");
+$("#pad").append(...Array.from({ length: 12 }, (_, i) => [h("h3", {}, `Section ${i + 1}`),
+  h("p", {}, "Scroll slowly: one notch should glide a short way and settle. Flick the wheel a few times quickly: it should speed up and carry further, then ease out."),
+  h("p", {}, "Now scroll the other way mid-glide: it should stop at once and follow you, not fight back.")]).flat());
+
+// ---------- settings ----------
+$("#login").addEventListener("change", async e => {
+  const on = e.target.checked; $("#login-msg").textContent = on ? "Turning on…" : "Turning off…";
+  try { const r = await api("start-at-login", { on }); $("#login-msg").textContent = r.message; }
+  catch (err) { e.target.checked = !on; $("#login-msg").textContent = err.message; }
+});
+$("#press-select").checked = store.get("unimouse.pressSelect", "1") === "1";
+$("#press-select").addEventListener("change", e => store.set("unimouse.pressSelect", e.target.checked ? "1" : "0"));
+$("#reveal").addEventListener("click", () => api("open", { what: "config-folder" }));
+$("#layout").addEventListener("change", e => { layoutId = e.target.value; store.set("unimouse.layout", layoutId); select(selected); });
+function renderAppRows() {
+  const keys = Object.keys(cfg.app);
+  $("#app-rows").replaceChildren(...(keys.length ? keys.map(k => {
+    const t = cfg.app[k];
+    const name = h("input", { type: "text", value: k, "aria-label": `Names for ${appTitle(k)}` });
+    name.addEventListener("change", () => {
+      const nk = name.value.trim().toLowerCase();
+      if (!nk || nk === k) { name.value = k; return; }
+      if (cfg.app[nk]) { name.value = k; return setStatus(`“${nk}” already exists`, true); }
+      change(() => { cfg.app[nk] = t; delete cfg.app[k]; if (profile === k) profile = nk; }, "App renamed");
+    });
+    const smooth = h("input", { type: "checkbox", checked: t.scroll !== "native" });
+    smooth.addEventListener("change", () => change(() => { if (smooth.checked) delete t.scroll; else t.scroll = "native"; }, "Scrolling updated"));
+    return h("div", { class: "row app-row" },
+      h("span", { class: "avatar", style: `width:30px;height:30px;font-size:13px;border-radius:8px;background:hsl(${hue(k)} 55% 48%)` }, appTitle(k)[0]),
+      name, h("label", { class: "switch", title: "Smooth scrolling in this app" }, smooth, h("span", { class: "note", style: "margin:0" }, "Smooth")),
+      h("button", { class: "btn", onclick: () => change(() => { delete cfg.app[k]; if (profile === k) profile = "default"; }, `Removed ${appTitle(k)}`) }, "Remove"));
+  }) : [h("p", { class: "empty-state" }, "No apps yet. Use “Add app” above the tabs.")]));
+}
+
+// ---------- tabs ----------
+function showTab(name) {
+  for (const b of $$(".tabs button")) b.setAttribute("aria-selected", String(b.dataset.tab === name));
+  for (const s of $$("main > section")) s.hidden = s.id !== `tab-${name}`;
+}
+$$(".tabs button").forEach(b => b.addEventListener("click", () => showTab(b.dataset.tab)));
+
+function renderAll() {
+  if (profile !== "default" && !cfg.app[profile]) profile = "default";
+  renderApps(); renderLayoutPicker(); renderStage(); renderInspector(); renderScroll(); renderAppRows();
+}
+
+// The mouse's own back button would otherwise leave this page.
+history.pushState(null, "", location.href);
+addEventListener("popstate", () => history.pushState(null, "", location.href));
+$("#logo-mark").append(icon("mouse"));
+$("#feed").append(h("li", { class: "empty-state" }, "Press a button on your mouse…"));
+
+(async () => {
+  if (!token) return setStatus("Open this page with: unimouse --settings", true);
+  try {
+    [info, cfg, health] = await Promise.all([api("info"), api("config"), api("health")]);
+    if (!LAYOUTS[layoutId]) layoutId = guessLayout(bestMouse()?.name || "", []);
+    $("#config-path").textContent = info.config; $("#login").checked = info.start_at_login;
+    renderAll(); renderDevice(); renderBanners(); setStatus("All changes save automatically");
+    poll(); setTimeout(pollHealth, 3000);
+  } catch (e) { setStatus(`Can't load settings: ${e.message}`, true); }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+# unimouse config: the same file works on macOS, Windows and Linux.
+# Save it and the change applies on your next click or scroll. No restart.
+#
+# Triggers   buttonN              click   (N: 3 = middle, 4 = back, 5 = forward)
+#            buttonN_drag_left    hold the button and drag (also _right, _up, _down)
+#            buttonN_scroll_up    hold the button and scroll (also _scroll_down); fires once per notch
+#            buttonN_hold         long press: held for hold_ms without dragging (fires on release)
+#
+# Actions    back  forward  mission_control  app_windows
+#            prev_desktop  next_desktop  show_desktop
+#            volume_up  volume_down  mute  play_pause  next_track  prev_track
+#            keys:<combo>   e.g. "keys:mod+shift+t"
+#                           mod      = Cmd on macOS, Ctrl on Windows/Linux (use this for portable shortcuts)
+#                           cmd/win  = the Cmd key / the Windows key / Super
+#                           ctrl, alt (or opt), shift
+#            open:<target>  URL, file, folder or app, e.g. "open:https://claude.ai"
+#            run:<command>  shell command (sh on macOS/Linux, cmd on Windows), e.g. "run:~/bin/ask-ai.sh"
+#            none           swallow the button
+#            native         leave the button to the app (handy for games)
+#
+# In an [app.*] section, scroll = "native" turns smooth scrolling off for that app.
+#
+# A button with gestures but no click action still clicks normally.
+
+drag_threshold = 40   # pixels the pointer must travel before a drag counts
+hold_ms        = 400  # press at least this long for buttonN_hold
+
+[scroll]              # mouse wheels only; trackpads and high-res wheels are left alone
+smooth  = true        # glide like a trackpad; quick flicks speed up
+speed   = 1.0         # distance multiplier, tune to taste
+reverse = false       # flip the mouse wheel without touching trackpad direction
+                      # Hold Cmd/Ctrl/Alt/Shift while scrolling to get native scrolling (zoom etc.)
+
+[default]
+button4 = "back"
+button5 = "forward"
+button4_drag_left  = "prev_desktop"
+button4_drag_right = "next_desktop"
+button4_drag_up    = "mission_control"
+button4_drag_down  = "app_windows"
+button5_drag_up    = "keys:mod+t"           # new tab
+button5_drag_down  = "keys:mod+w"           # close tab
+button5_scroll_up   = "volume_up"           # hold forward + scroll = volume
+button5_scroll_down = "volume_down"
+button5_hold       = "play_pause"           # long-press forward = play/pause
+button4_scroll_up   = "keys:ctrl+shift+tab" # hold back + scroll = flip through tabs
+button4_scroll_down = "keys:ctrl+tab"
+button3_drag_left  = "keys:ctrl+shift+tab"  # previous tab
+button3_drag_right = "keys:ctrl+tab"        # next tab
+# button3_hold     = "run:~/bin/ask-ai.sh"  # wire a mouse button to any script or AI tool
+
+# Per-app overrides. A section matches the frontmost app's name on macOS, its exe name
+# on Windows, or its WM_CLASS on Linux/X11 (case-insensitive, exact). List aliases with "|".
+# Anything an app doesn't set falls back to [default].
+[app.code]                          # VS Code ("Code" on all three)
+button5 = "keys:mod+shift+p"
+
+[app."google chrome|chrome|google-chrome"]
+button5_drag_left  = "keys:mod+shift+t"   # reopen closed tab
+
+[app."minecraft|javaw"]
+button4 = "native"
+button5 = "native"
+scroll  = "native"    # games want raw wheel notches

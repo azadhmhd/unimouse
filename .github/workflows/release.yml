@@ -1,0 +1,72 @@
+# Push a tag like v0.1.0 to build downloads for every platform and publish them as a GitHub release.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build (${{ matrix.name }})
+    strategy:
+      matrix:
+        include:
+          - { name: macos-universal, os: macos-latest }
+          - { name: windows-x86_64, os: windows-latest, target: x86_64-pc-windows-msvc }
+          - { name: linux-x86_64, os: ubuntu-latest, target: x86_64-unknown-linux-gnu }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target || 'aarch64-apple-darwin,x86_64-apple-darwin' }}
+
+      - name: Build (macOS, Apple silicon + Intel in one binary)
+        if: runner.os == 'macOS'
+        run: |
+          cargo build --release --target aarch64-apple-darwin
+          cargo build --release --target x86_64-apple-darwin
+          mkdir -p dist
+          lipo -create -output dist/unimouse \
+            target/aarch64-apple-darwin/release/unimouse target/x86_64-apple-darwin/release/unimouse
+      - name: Build (Windows, Linux)
+        if: runner.os != 'macOS'
+        shell: bash
+        run: |
+          cargo build --release --target ${{ matrix.target }}
+          mkdir -p dist
+          cp target/${{ matrix.target }}/release/unimouse${{ runner.os == 'Windows' && '.exe' || '' }} dist/
+
+      - name: Package
+        shell: bash
+        run: |
+          cp README.md LICENSE-MIT LICENSE-APACHE config.example.toml dist/
+          name=unimouse-${{ github.ref_name }}-${{ matrix.name }}
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            7z a "$name.zip" ./dist/*
+          else
+            tar -czf "$name.tar.gz" -C dist .
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: unimouse-*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: unimouse-*
+          generate_release_notes: true

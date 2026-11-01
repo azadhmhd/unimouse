@@ -1,0 +1,11 @@
+name: Idea
+description: Suggest a feature or an app setup
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like unimouse to do?
+      description: Describe the problem it solves for you, not just the solution.
+    validations:
+      required: true
